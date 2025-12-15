@@ -1,0 +1,106 @@
+.draggable-field {
+  position: absolute;
+  border: 2px dashed #3498db;
+  background-color: rgba(52, 152, 219, 0.1);
+  cursor: move;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: box-shadow 0.2s;
+  user-select: none;
+  min-width: 50px;
+  min-height: 30px;
+}
+
+.draggable-field:hover {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  background-color: rgba(52, 152, 219, 0.15);
+}
+
+.draggable-field.selected {
+  border-style: solid;
+  border-width: 2px;
+  box-shadow: 0 0 0 2px rgba(52, 152, 219, 0.3);
+  z-index: 100;
+}
+
+.draggable-field.dragging {
+  opacity: 0.7;
+  cursor: grabbing;
+}
+
+.field-content {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  pointer-events: none;
+  font-size: 0.85rem;
+  color: #2c3e50;
+  font-weight: 500;
+}
+
+.field-icon-small {
+  font-size: 1.2rem;
+}
+
+.field-type-label {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* Resize handle */
+.resize-handle {
+  position: absolute;
+  bottom: -4px;
+  right: -4px;
+  width: 12px;
+  height: 12px;
+  background-color: #3498db;
+  border: 2px solid white;
+  border-radius: 50%;
+  cursor: nwse-resize;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+  z-index: 10;
+}
+
+.resize-handle:hover {
+  transform: scale(1.2);
+}
+
+/* Delete button */
+.delete-button {
+  position: absolute;
+  top: -10px;
+  right: -10px;
+  width: 24px;
+  height: 24px;
+  background-color: #e74c3c;
+  color: white;
+  border: 2px solid white;
+  border-radius: 50%;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.9rem;
+  font-weight: bold;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+  transition: all 0.2s;
+  z-index: 10;
+}
+
+.delete-button:hover {
+  background-color: #c0392b;
+  transform: scale(1.1);
+}
+
+/* Prevent text selection during drag */
+.draggable-field * {
+  pointer-events: none;
+}
+
+.draggable-field .resize-handle,
+.draggable-field .delete-button {
+  pointer-events: auto;
+}

@@ -1,0 +1,53 @@
+.pdf-container {
+  position: relative;
+  display: inline-block;
+  background-color: white;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  transition: all 0.3s;
+}
+
+.pdf-container.drag-over {
+  box-shadow: 0 0 0 3px #3498db;
+  background-color: rgba(52, 152, 219, 0.05);
+}
+
+.drop-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(52, 152, 219, 0.1);
+  border: 3px dashed #3498db;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  z-index: 1000;
+}
+
+.drop-overlay p {
+  font-size: 1.5rem;
+  font-weight: bold;
+  color: #3498db;
+  background-color: white;
+  padding: 1rem 2rem;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.pdf-document {
+  display: flex;
+  justify-content: center;
+}
+
+.react-pdf__Page {
+  position: relative;
+}
+
+/* Ensure PDF canvas is properly positioned */
+.react-pdf__Page__canvas {
+  display: block;
+  max-width: 100%;
+  height: auto !important;
+}
