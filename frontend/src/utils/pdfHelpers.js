@@ -1,113 +1,86 @@
-import { browserToPdfCoordinates, getRenderedDimensions } from './coordinateTransform';
+import {
+  browserToPdfCoordinates,
+  getRenderedDimensions,
+} from './coordinateTransform';
 
-/**
- * Prepare field data for backend PDF signing
- * Converts all browser coordinates to PDF coordinates
- * 
- * @param {Array} fields - Array of fields with browser coordinates
- * @param {Object} pdfDimensions - PDF dimensions per page
- * @param {HTMLElement} pdfContainer - The PDF container element
- * @returns {Array} Fields with PDF coordinates
- */
-export const prepareFieldsForBackend = (fields, pdfDimensions, pdfContainer) => {
+// Prepare field data before sending it to the backend
+export const prepareFieldsForBackend = (
+  fields,
+  pdfDimensions,
+  pdfContainer
+) => {
   if (!pdfContainer) {
-    console.error('PDF container not found');
     return [];
   }
 
-  // Get rendered dimensions from the actual PDF page
   const pdfPageElement = pdfContainer.querySelector('.react-pdf__Page');
   const renderedDims = getRenderedDimensions(pdfPageElement);
 
-  console.log('Preparing fields for backend...');
-  console.log('Rendered dimensions:', renderedDims);
+  return fields
+    .map((field) => {
+      const pageDims = pdfDimensions[field.pageNumber];
+      if (!pageDims) return null;
 
-  return fields.map(field => {
-    const pageDims = pdfDimensions[field.pageNumber];
-    
-    if (!pageDims) {
-      console.error(`No dimensions found for page ${field.pageNumber}`);
-      return null;
-    }
+      const pdfCoords = browserToPdfCoordinates(
+        {
+          x: field.x,
+          y: field.y,
+          width: field.width,
+          height: field.height,
+        },
+        pageDims,
+        renderedDims
+      );
 
-    // Convert browser coordinates to PDF coordinates
-    const pdfCoords = browserToPdfCoordinates(
-      {
-        x: field.x,
-        y: field.y,
-        width: field.width,
-        height: field.height,
-      },
-      pageDims,
-      renderedDims
-    );
-
-    console.log(`Field ${field.id}:`, {
-      browser: { x: field.x, y: field.y, width: field.width, height: field.height },
-      pdf: pdfCoords,
-    });
-
-    return {
-      id: field.id,
-      type: field.type,
-      pageNumber: field.pageNumber,
-      coordinates: pdfCoords, // PDF coordinates in points
-    };
-  }).filter(Boolean); // Remove null entries
+      return {
+        id: field.id,
+        type: field.type,
+        pageNumber: field.pageNumber,
+        coordinates: pdfCoords,
+      };
+    })
+    .filter(Boolean);
 };
 
-/**
- * Convert a single image to base64
- * 
- * @param {File} file - Image file
- * @returns {Promise<string>} Base64 string
- */
+// Convert a file to base64 (used for signature images)
 export const fileToBase64 = (file) => {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
+
     reader.onload = () => {
-      // Remove data URL prefix (e.g., "data:image/png;base64,")
       const base64 = reader.result.split(',')[1];
       resolve(base64);
     };
+
     reader.onerror = reject;
     reader.readAsDataURL(file);
   });
 };
 
-/**
- * Calculate SHA-256 hash of a file
- * 
- * @param {File} file - File to hash
- * @returns {Promise<string>} Hex string of hash
- */
+// Generate SHA-256 hash for audit purposes
 export const calculateFileHash = async (file) => {
-  const arrayBuffer = await file.arrayBuffer();
-  const hashBuffer = await crypto.subtle.digest('SHA-256', arrayBuffer);
+  const buffer = await file.arrayBuffer();
+  const hashBuffer = await crypto.subtle.digest('SHA-256', buffer);
   const hashArray = Array.from(new Uint8Array(hashBuffer));
-  const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-  return hashHex;
+
+  return hashArray
+    .map((b) => b.toString(16).padStart(2, '0'))
+    .join('');
 };
 
-/**
- * Validate field positions are within PDF bounds
- * 
- * @param {Array} fields - Fields to validate
- * @param {Object} pdfDimensions - PDF dimensions
- * @returns {Object} Validation result
- */
+// Validate field placement against PDF bounds
 export const validateFieldPositions = (fields, pdfDimensions) => {
   const errors = [];
 
-  fields.forEach(field => {
+  fields.forEach((field) => {
     const pageDims = pdfDimensions[field.pageNumber];
-    
     if (!pageDims) {
-      errors.push(`Field ${field.id}: Page ${field.pageNumber} dimensions not found`);
+      errors.push(
+        `Field ${field.id}: Page ${field.pageNumber} dimensions missing`
+      );
       return;
     }
 
-    // Check if field is within bounds
     if (field.x < 0 || field.y < 0) {
       errors.push(`Field ${field.id}: Negative coordinates`);
     }
@@ -127,29 +100,27 @@ export const validateFieldPositions = (fields, pdfDimensions) => {
   };
 };
 
-/**
- * Create download link for signed PDF
- * 
- * @param {Blob} pdfBlob - PDF blob from backend
- * @param {string} filename - Desired filename
- */
-export const downloadPdf = (pdfBlob, filename = 'signed-document.pdf') => {
+// Trigger browser download for a signed PDF
+export const downloadPdf = (
+  pdfBlob,
+  filename = 'signed-document.pdf'
+) => {
   const url = URL.createObjectURL(pdfBlob);
   const link = document.createElement('a');
+
   link.href = url;
   link.download = filename;
+
   document.body.appendChild(link);
   link.click();
   document.body.removeChild(link);
+
   URL.revokeObjectURL(url);
 };
 
-/**
- * Format coordinates for display/debugging
- * 
- * @param {Object} coords - Coordinates object
- * @returns {string} Formatted string
- */
+// Helper for displaying coordinates during debugging
 export const formatCoordinates = (coords) => {
-  return `(${coords.x.toFixed(2)}, ${coords.y.toFixed(2)}) [${coords.width.toFixed(2)} × ${coords.height.toFixed(2)}]`;
+  return `(${coords.x.toFixed(2)}, ${coords.y.toFixed(
+    2
+  )}) [${coords.width.toFixed(2)} × ${coords.height.toFixed(2)}]`;
 };

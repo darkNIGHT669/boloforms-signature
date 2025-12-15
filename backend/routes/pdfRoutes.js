@@ -1,7 +1,4 @@
-/**
- * PDF Routes
- * Location: backend/routes/pdfRoutes.js
- */
+
 
 const express = require('express');
 const router = express.Router();
@@ -20,13 +17,12 @@ router.get('/test', (req, res) => {
   });
 });
 
-// Sign PDF with signature
+
 router.post('/sign-pdf', signPdfHandler);
 
-// Get document by ID
+
 router.get('/:id', getDocumentHandler);
 
-// Verify document integrity
 router.post('/verify', verifyDocumentHandler);
 
 module.exports = router;

@@ -1,150 +1,111 @@
-/**
- * PDF Service - PDF Manipulation and Signing
- * Location: backend/services/pdfService.js
- */
-
 const { PDFDocument, rgb } = require('pdf-lib');
 
-/**
- * Overlay signature image onto PDF at specified coordinates
- * 
- * @param {Buffer} pdfBuffer - Original PDF buffer
- * @param {Object} signatureData - Signature data
- * @param {string} signatureData.imageBase64 - Base64 signature image
- * @param {Array} signatureData.fields - Array of field positions
- * @returns {Promise<Buffer>} Modified PDF buffer
- */
+// Embed signature image into the PDF at given coordinates
 const signPdf = async (pdfBuffer, signatureData) => {
+  const pdfDoc = await PDFDocument.load(pdfBuffer);
+
+  // Decode base64 image and embed it (PNG preferred, JPEG fallback)
+  let signatureImg;
+  const imgData = signatureData.imageBase64.replace(
+    /^data:image\/(jpeg|png);base64,/,
+    ''
+  );
+
   try {
-    // Load the PDF
-    const pdfDoc = await PDFDocument.load(pdfBuffer);
-    
-    // Decode signature image from base64
-    let signatureImage;
+    signatureImg = await pdfDoc.embedPng(Buffer.from(imgData, 'base64'));
+  } catch {
     try {
-      // Determine image type and embed accordingly
-      if (signatureData.imageBase64.startsWith('/9j/') || signatureData.imageBase64.includes('data:image/jpeg')) {
-        // JPEG image
-        const imageData = signatureData.imageBase64.replace(/^data:image\/jpeg;base64,/, '');
-        signatureImage = await pdfDoc.embedJpg(Buffer.from(imageData, 'base64'));
-      } else {
-        // PNG image (default)
-        const imageData = signatureData.imageBase64.replace(/^data:image\/png;base64,/, '');
-        signatureImage = await pdfDoc.embedPng(Buffer.from(imageData, 'base64'));
-      }
-    } catch (error) {
-      console.error('Error embedding image:', error);
-      throw new Error('Invalid image format. Please use PNG or JPEG.');
+      signatureImg = await pdfDoc.embedJpg(Buffer.from(imgData, 'base64'));
+    } catch {
+      throw new Error('Image format not supported. Use PNG or JPEG.');
     }
-
-    // Get image dimensions
-    const imgWidth = signatureImage.width;
-    const imgHeight = signatureImage.height;
-    const imgAspectRatio = imgWidth / imgHeight;
-
-    // Process each field
-    for (const field of signatureData.fields) {
-      if (field.type !== 'signature') continue; // Only process signature fields
-
-      const pageIndex = field.pageNumber - 1; // Pages are 0-indexed
-      const page = pdfDoc.getPages()[pageIndex];
-
-      if (!page) {
-        console.warn(`Page ${field.pageNumber} not found`);
-        continue;
-      }
-
-      // Get PDF coordinates from field
-      const { x, y, width, height } = field.coordinates;
-
-      // Calculate field aspect ratio
-      const fieldAspectRatio = width / height;
-
-      // Calculate dimensions to fit image within field while maintaining aspect ratio
-      let drawWidth, drawHeight, drawX, drawY;
-
-      if (imgAspectRatio > fieldAspectRatio) {
-        // Image is wider - fit to width
-        drawWidth = width;
-        drawHeight = width / imgAspectRatio;
-        drawX = x;
-        drawY = y + (height - drawHeight) / 2; // Center vertically
-      } else {
-        // Image is taller - fit to height
-        drawHeight = height;
-        drawWidth = height * imgAspectRatio;
-        drawX = x + (width - drawWidth) / 2; // Center horizontally
-        drawY = y;
-      }
-
-      // Draw the signature image
-      page.drawImage(signatureImage, {
-        x: drawX,
-        y: drawY,
-        width: drawWidth,
-        height: drawHeight,
-      });
-
-      console.log(`✍️ Signature added to page ${field.pageNumber} at (${x.toFixed(2)}, ${y.toFixed(2)})`);
-    }
-
-    // Save the modified PDF
-    const modifiedPdfBytes = await pdfDoc.save();
-    return Buffer.from(modifiedPdfBytes);
-  } catch (error) {
-    console.error('Error signing PDF:', error);
-    throw error;
   }
+
+  const imgW = signatureImg.width;
+  const imgH = signatureImg.height;
+  const imgRatio = imgW / imgH;
+
+  for (const field of signatureData.fields) {
+    if (field.type !== 'signature') continue;
+
+    const pageIndex = field.pageNumber - 1;
+    const page = pdfDoc.getPages()[pageIndex];
+
+    if (!page) {
+      console.warn(`Skipping field: page ${field.pageNumber} not found`);
+      continue;
+    }
+
+    const { x, y, width, height } = field.coordinates;
+    const fieldRatio = width / height;
+
+    let drawW, drawH, drawX, drawY;
+
+    // Fit image inside field while preserving aspect ratio
+    if (imgRatio > fieldRatio) {
+      drawW = width;
+      drawH = width / imgRatio;
+      drawX = x;
+      drawY = y + (height - drawH) / 2;
+    } else {
+      drawH = height;
+      drawW = height * imgRatio;
+      drawX = x + (width - drawW) / 2;
+      drawY = y;
+    }
+
+    page.drawImage(signatureImg, {
+      x: drawX,
+      y: drawY,
+      width: drawW,
+      height: drawH,
+    });
+
+    console.log(
+      `Added signature to page ${field.pageNumber} at (${x.toFixed(
+        1
+      )}, ${y.toFixed(1)})`
+    );
+  }
+
+  const pdfBytes = await pdfDoc.save();
+  return Buffer.from(pdfBytes);
 };
 
-/**
- * Add text field to PDF
- * 
- * @param {Buffer} pdfBuffer - Original PDF buffer
- * @param {Object} textData - Text field data
- * @returns {Promise<Buffer>} Modified PDF buffer
- */
+// Draw basic text fields (prototype support)
 const addTextField = async (pdfBuffer, textData) => {
-  try {
-    const pdfDoc = await PDFDocument.load(pdfBuffer);
-    
-    for (const field of textData.fields) {
-      if (field.type !== 'text') continue;
+  const pdfDoc = await PDFDocument.load(pdfBuffer);
 
-      const pageIndex = field.pageNumber - 1;
-      const page = pdfDoc.getPages()[pageIndex];
+  for (const field of textData.fields) {
+    if (field.type !== 'text') continue;
 
-      if (!page) continue;
+    const pageIndex = field.pageNumber - 1;
+    const page = pdfDoc.getPages()[pageIndex];
+    if (!page) continue;
 
-      const { x, y, width, height } = field.coordinates;
+    const { x, y, width, height } = field.coordinates;
 
-      // Draw text box border
-      page.drawRectangle({
-        x: x,
-        y: y,
-        width: width,
-        height: height,
-        borderColor: rgb(0, 0, 0),
-        borderWidth: 1,
+    page.drawRectangle({
+      x,
+      y,
+      width,
+      height,
+      borderColor: rgb(0, 0, 0),
+      borderWidth: 1,
+    });
+
+    if (field.value) {
+      page.drawText(field.value, {
+        x: x + 5,
+        y: y + height / 2,
+        size: 12,
+        color: rgb(0, 0, 0),
       });
-
-      // Add text if provided
-      if (field.value) {
-        page.drawText(field.value, {
-          x: x + 5,
-          y: y + height / 2,
-          size: 12,
-          color: rgb(0, 0, 0),
-        });
-      }
     }
-
-    const modifiedPdfBytes = await pdfDoc.save();
-    return Buffer.from(modifiedPdfBytes);
-  } catch (error) {
-    console.error('Error adding text field:', error);
-    throw error;
   }
+
+  const pdfBytes = await pdfDoc.save();
+  return Buffer.from(pdfBytes);
 };
 
 module.exports = {

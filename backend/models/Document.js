@@ -11,7 +11,6 @@ const documentSchema = new mongoose.Schema({
     required: true,
   },
   
-  // Signed PDF info
   signedFileHash: {
     type: String,
   },
@@ -19,13 +18,12 @@ const documentSchema = new mongoose.Schema({
     type: String,
   },
   
-  // Signature metadata
+ 
   signatureData: {
     type: Object,
     default: {},
   },
   
-  // Field positions (for audit trail)
   fields: [{
     type: {
       type: String,
@@ -51,15 +49,15 @@ const documentSchema = new mongoose.Schema({
   },
   
 }, {
-  timestamps: true, // Automatically adds createdAt and updatedAt
+  timestamps: true, 
 });
 
-// Indexes for faster queries
+
 documentSchema.index({ originalFileHash: 1 });
 documentSchema.index({ signedFileHash: 1 });
 documentSchema.index({ createdAt: -1 });
 
-// Method to verify document integrity
+
 documentSchema.methods.verifyIntegrity = function() {
   return this.originalFileHash && this.signedFileHash;
 };

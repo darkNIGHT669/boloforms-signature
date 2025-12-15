@@ -1,25 +1,17 @@
-/**
- * PDF Controller - Request Handlers
- * Location: backend/controllers/pdfController.js
- */
-
 const { signPdf, addTextField } = require('../services/pdfService');
 const { calculateHash } = require('../services/hashService');
 const Document = require('../models/Document');
 const fs = require('fs').promises;
 const path = require('path');
 
-/**
- * Sign PDF with signature
- * POST /api/pdf/sign-pdf
- */
+
 const signPdfHandler = async (req, res) => {
   try {
     console.log('📥 Received sign-pdf request');
 
     const { pdfBase64, signatureBase64, fields } = req.body;
 
-    // Validate input
+    
     if (!pdfBase64 || !signatureBase64 || !fields || fields.length === 0) {
       return res.status(400).json({
         success: false,
@@ -27,15 +19,15 @@ const signPdfHandler = async (req, res) => {
       });
     }
 
-    // Decode PDF from base64
+    
     const originalPdfBuffer = Buffer.from(pdfBase64, 'base64');
     console.log(`📄 Original PDF size: ${(originalPdfBuffer.length / 1024).toFixed(2)} KB`);
 
-    // Calculate hash of original PDF
+    
     const originalHash = calculateHash(originalPdfBuffer);
     console.log(`🔐 Original PDF hash: ${originalHash.substring(0, 16)}...`);
 
-    // Filter signature fields
+    
     const signatureFields = fields.filter(f => f.type === 'signature');
     console.log(`✍️ Processing ${signatureFields.length} signature field(s)`);
 
@@ -51,12 +43,12 @@ const signPdfHandler = async (req, res) => {
     const signedHash = calculateHash(signedPdfBuffer);
     console.log(`🔐 Signed PDF hash: ${signedHash.substring(0, 16)}...`);
 
-    // Save to database
+    
     const document = new Document({
       originalFileName: 'document.pdf',
       originalFileHash: originalHash,
       signedFileHash: signedHash,
-      signedFileUrl: null, // Will be set if we upload to storage
+      signedFileUrl: null, 
       fields: fields,
       status: 'signed',
       signedAt: new Date(),
@@ -89,10 +81,7 @@ const signPdfHandler = async (req, res) => {
   }
 };
 
-/**
- * Get document by ID
- * GET /api/pdf/:id
- */
+
 const getDocumentHandler = async (req, res) => {
   try {
     const { id } = req.params;
@@ -120,10 +109,7 @@ const getDocumentHandler = async (req, res) => {
   }
 };
 
-/**
- * Verify document integrity
- * POST /api/pdf/verify
- */
+
 const verifyDocumentHandler = async (req, res) => {
   try {
     const { documentId, pdfBase64 } = req.body;
